@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestiCharges</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sand: #f7f3ee;
+  --cream: #fdfaf6;
+  --warm-white: #fff9f4;
+  --brown-light: #e8ddd2;
+  --brown-mid: #c4ab94;
+  --brown: #8b6f5e;
+  --brown-dark: #5c4033;
+  --text: #2d1f1a;
+  --text-mid: #6b4f43;
+  --text-light: #9b7b6e;
+  --accent: #c97d4e;
+  --accent-hover: #b86e3f;
+  --accent-light: #f2e4d8;
+  --green: #4a7c59;
+  --green-light: #e8f3eb;
+  --blue: #3d6b8a;
+  --blue-light: #e4eef5;
+  --red: #b84c3c;
+  --red-light: #fceae8;
+  --border: #e0d5cc;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(90,60,40,0.07);
+  --shadow-md: 0 4px 24px rgba(90,60,40,0.10);
+}
+body { background: var(--sand); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+/* TOP BAR */
+.topbar { background: var(--warm-white); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 58px; position: sticky; top: 0; z-index: 50; }
+.brand { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: var(--brown-dark); }
+.brand-dot { color: var(--accent); }
+.nav-pills { display: flex; gap: 4px; }
+.nav-pill { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; color: var(--text-light); cursor: pointer; border: none; background: transparent; transition: all 0.15s; font-family: 'Inter', sans-serif; }
+.nav-pill:hover { background: var(--accent-light); color: var(--accent); }
+.nav-pill.active { background: var(--accent); color: #fff; }
+
+/* LAYOUT */
+.shell { display: grid; grid-template-columns: 252px 1fr; min-height: calc(100vh - 58px); }
+.sidebar { background: var(--warm-white); border-right: 1px solid var(--border); padding: 20px 14px; position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto; }
+.content { padding: 30px 34px; }
+.content-inner { max-width: 720px; }
+
+/* SIDEBAR */
+.sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-light); padding: 0 10px; margin-bottom: 6px; margin-top: 20px; }
+.sidebar-label:first-child { margin-top: 0; }
+.sidebar-item { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; color: var(--text-mid); font-size: 13px; font-weight: 500; }
+.sidebar-item:hover { background: var(--accent-light); color: var(--accent); }
+.sidebar-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.sb-badge { margin-left: auto; background: var(--accent); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 600; padding: 1px 7px; }
+.hist-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; }
+.hist-item:hover { background: var(--sand); }
+.hist-item-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.hist-item-sub { font-size: 11px; color: var(--text-light); }
+.hist-item-arrow { color: var(--text-light); font-size: 13px; }
+
+/* PAGE HEADER */
+.page-header { margin-bottom: 26px; }
+.page-title { font-family: 'Lora', serif; font-size: 25px; font-weight: 600; color: var(--brown-dark); line-height: 1.2; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--text-light); }
+
+/* VIEWS */
+.view { display: none; }
+.view.active { display: block; }
+
+/* CARDS */
+.card { background: var(--warm-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.card-title { font-weight: 600; font-size: 13px; color: var(--text); }
+.card-icon { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.icon-o { background: var(--accent-light); }
+.icon-g { background: var(--green-light); }
+.icon-b { background: var(--blue-light); }
+
+/* FIELDS */
+.fg { display: grid; gap: 12px; margin-bottom: 12px; }
+.fg.c2 { grid-template-columns: 1fr 1fr; }
+.fg.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg:last-child { margin-bottom: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-light); }
+.field input, .field select { height: 39px; background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 11px; font-family: 'Inter', sans-serif; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201,125,78,0.10); }
+.field input::placeholder { color: var(--text-light); }
+.field .hint { font-size: 11px; color: var(--text-light); font-style: italic; }
+.prev-hint { font-size: 11px; color: var(--green); background: var(--green-light); border-radius: 5px; padding: 3px 9px; margin-top: 3px; display: none; }
+.prev-hint.show { display: block; }
+
+/* ROOM BLOCKS */
+.room-block { background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 15px 17px; margin-bottom: 10px; transition: border-color 0.15s; }
+.room-block:hover { border-color: var(--brown-mid); }
+.room-bh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.room-name { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+.pill-o { background: var(--accent-light); color: var(--accent); }
+.pill-g { background: var(--green-light); color: var(--green); }
+.pill-b { background: var(--blue-light); color: var(--blue); }
+.btn-rm { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 12px; padding: 3px 8px; border-radius: 5px; transition: all 0.15s; font-family: 'Inter', sans-serif; }
+.btn-rm:hover { background: var(--red-light); color: var(--red); }
+.water-note { background: var(--green-light); border-radius: 6px; padding: 7px 11px; font-size: 12px; color: var(--green); margin-top: 8px; }
+
+/* ELEC ROOM GROUP */
+.elec-room-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.elec-room-group:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+.elec-room-label { font-size: 13px; font-weight: 600; color: var(--text-mid); margin-bottom: 9px; display: flex; align-items: center; gap: 7px; }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 39px; padding: 0 18px; border-radius: var(--radius-sm); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+.btn-p { background: var(--accent); color: #fff; }
+.btn-p:hover { background: var(--accent-hover); }
+.btn-s { background: var(--cream); border: 1px solid var(--border); color: var(--text-mid); }
+.btn-s:hover { border-color: var(--accent); color: var(--accent); }
+.btn-g { background: var(--green); color: #fff; }
+.btn-g:hover { background: #3c6649; }
+.btn-row { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; align-items: center; }
+.btn-add { width: 100%; height: 42px; background: var(--sand); border: 1.5px dashed var(--brown-mid); border-radius: var(--radius-sm); color: var(--brown); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; margin-bottom: 14px; }
+.btn-add:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
+/* ALERT */
+.alert { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+.alert.show { display: block; }
+.alert-err { background: var(--red-light); border: 1px solid rgba(184,76,60,0.25); color: var(--red); }
+.alert-ok { background: var(--green-light); border: 1px solid rgba(74,124,89,0.25); color: var(--green); }
+
+/* RESULTS */
+.stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; margin-bottom: 18px; }
+.stat-card { background: var(--warm-white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+.stat-label { font-size: 10px; color: var(--text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-val { font-family: 'Lora', serif; font-size: 20px; font-weight: 600; color: var(--brown-dark); }
+.stat-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+.result-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.result-table th { text-align: left; padding: 9px 14px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-light); border-bottom: 1px solid var(--border); background: var(--sand); }
+.result-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.result-table tr:last-of-type td { border-bottom: none; }
+.result-table tbody tr:not(.total-row):hover td { background: var(--sand); }
+.result-table .total-row td { background: var(--accent-light); font-weight: 600; color: var(--brown-dark); }
+.amount { font-family: 'Lora', serif; font-size: 15px; font-weight: 600; color: var(--accent); }
+.total-amount { font-family: 'Lora', serif; font-size: 18px; font-weight: 600; color: var(--accent); }
+.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+/* HISTORY VIEW */
+.hist-card { background: var(--warm-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 17px 20px; margin-bottom: 11px; cursor: pointer; transition: all 0.15s; box-shadow: var(--shadow); }
+.hist-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.hist-card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.hist-month { font-family: 'Lora', serif; font-size: 17px; font-weight: 600; color: var(--brown-dark); }
+.hist-total { font-family: 'Lora', serif; font-size: 16px; color: var(--accent); }
+.hist-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.hist-rpill { background: var(--sand); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text-mid); }
+.empty-state { text-align: center; padding: 56px 20px; color: var(--text-light); }
+.empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.45; }
+.empty-title { font-family: 'Lora', serif; font-size: 17px; color: var(--text-mid); margin-bottom: 5px; }
+.delete-btn { font-size: 11px; color: var(--text-light); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 5px; font-family: 'Inter', sans-serif; margin-left: 8px; }
+.delete-btn:hover { background: var(--red-light); color: var(--red); }
+
+@media (max-width: 680px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .content { padding: 20px 16px; }
+  .fg.c2, .fg.c3 { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
+  .nav-pill { padding: 5px 11px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Gesti<span class="brand-dot">.</span>Charges</div>
+  <div class="nav-pills">
+    <button class="nav-pill active" onclick="showView('saisie')">Nouveau relevé</button>
+    <button class="nav-pill" onclick="showView('historique')">Historique</button>
+    <button class="nav-pill" onclick="showView('config')">Chambres</button>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-label">Navigation</div>
+    <div class="sidebar-item active" id="sb-saisie" onclick="showView('saisie')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Saisir les relevés
+    </div>
+    <div class="sidebar-item" id="sb-historique" onclick="showView('historique')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historique
+      <span class="sb-badge" id="hist-count">0</span>
+    </div>
+    <div class="sidebar-item" id="sb-config" onclick="showView('config')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Chambres
+    </div>
+
+    <div class="sidebar-label" style="margin-top:22px;">Relevés récents</div>
+    <div id="sb-hist-list"></div>
+  </aside>
+
+  <div class="content">
+  <div class="content-inner">
+
+    <!-- ══ SAISIE ══ -->
+    <div class="view active" id="view-saisie">
+      <div class="page-header">
+        <div class="page-title">Relevé mensuel</div>
+        <div class="page-sub">Les relevés précédents sont pré-remplis automatiquement depuis l'historique.</div>
+      </div>
+
+      <div class="alert alert-err" id="alert-msg"></div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title">Période</div><div class="card-icon icon-o">📅</div></div>
+        <div class="fg c2">
+          <div class="field">
+            <label>Mois</label>
+            <select id="sel-mois" onchange="onPeriodChange()">
+              <option>Janvier</option><option>Février</option><option>Mars</option><option>Avril</option>
+              <option>Mai</option><option>Juin</option><option>Juillet</option><option>Août</option>
+              <option>Septembre</option><option>Octobre</option><option>Novembre</option><option>Décembre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Année</label>
+            <input type="number" id="sel-annee" min="2020" max="2035" onchange="onPeriodChange()">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title">Compteurs électricité</div><div class="card-icon icon-b">⚡</div></div>
+        <div id="elec-fields"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div class="card-title">Eau & Facture</div><div class="card-icon icon-g">💧</div></div>
+        <div class="fg c3">
+          <div class="field">
+            <label>Relevé eau précédent</label>
+            <input type="number" id="eau-prec" placeholder="0.00" step="0.01">
+            <div class="prev-hint" id="hint-eau"></div>
+          </div>
+          <div class="field">
+            <label>Relevé eau actuel</label>
+            <input type="number" id="eau-act" placeholder="0.00" step="0.01">
+          </div>
+          <div class="field">
+            <label>Montant facture (FCFA)</label>
+            <input type="number" id="facture" placeholder="0">
+            <div class="hint">Toutes taxes comprises</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="calculer()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Calculer la répartition
+        </button>
+      </div>
+
+      <div id="result-zone" style="display:none; margin-top:30px;">
+        <hr class="divider">
+        <div class="page-header" style="margin-bottom:14px;">
+          <div class="page-title" id="res-title" style="font-size:20px;"></div>
+        </div>
+        <div class="stat-row" id="res-stats"></div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="overflow-x:auto;"><table class="result-table" id="res-table"></table></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-g" id="btn-save" onclick="sauvegarder()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Enregistrer dans l'historique
+          </button>
+          <button class="btn btn-s" onclick="exportExcel()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exporter Excel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIQUE ══ -->
+    <div class="view" id="view-historique">
+      <div class="page-header">
+        <div class="page-title">Historique</div>
+        <div class="page-sub">Cliquez sur un mois pour recharger ses données et les ré-exporter.</div>
+      </div>
+      <div id="hist-list"></div>
+    </div>
+
+    <!-- ══ CONFIG CHAMBRES ══ -->
+    <div class="view" id="view-config">
+      <div class="page-header">
+        <div class="page-title">Chambres</div>
+        <div class="page-sub">Configurez les chambres de votre maison. Une chambre sans compteur électrique ne paie que l'eau.</div>
+      </div>
+      <div id="config-list"></div>
+      <button class="btn-add" onclick="addEditRoom()">+ Ajouter une chambre</button>
+      <div class="btn-row">
+        <button class="btn btn-p" onclick="saveConfig()">Enregistrer la configuration</button>
+      </div>
+      <div class="alert alert-ok" id="config-saved" style="margin-top:12px;">Configuration enregistrée ✓</div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<script>
+const ROOMS_KEY = 'gc_rooms_v2';
+const HIST_KEY = 'gc_history_v2';
+const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+// ── STORAGE ──
+function getRooms() {
+  const s = localStorage.getItem(ROOMS_KEY);
+  return s ? JSON.parse(s) : [
+    {id:1,nom:'CH 1',hasElec:true},{id:2,nom:'CH 2',hasElec:true},
+    {id:3,nom:'CH 3',hasElec:false},{id:4,nom:'CH 4',hasElec:true},
+    {id:5,nom:'CH 5',hasElec:true},{id:6,nom:'CH 6',hasElec:true},
+    {id:7,nom:'CH 7',hasElec:true}
+  ];
+}
+function setRooms(r) { localStorage.setItem(ROOMS_KEY, JSON.stringify(r)); }
+function getHistory() { const h = localStorage.getItem(HIST_KEY); return h ? JSON.parse(h) : []; }
+function setHistory(h) { localStorage.setItem(HIST_KEY, JSON.stringify(h)); }
+
+function saveEntry(entry) {
+  const h = getHistory();
+  const i = h.findIndex(e => e.mois === entry.mois && String(e.annee) === String(entry.annee));
+  if (i >= 0) h[i] = entry; else h.unshift(entry);
+  setHistory(h);
+}
+
+function deleteEntry(mois, annee) {
+  const h = getHistory().filter(e => !(e.mois === mois && String(e.annee) === String(annee)));
+  setHistory(h);
+  updateHistBadge();
+  renderSbHist();
+  renderHistView();
+}
+
+// ── NAVIGATION ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+  ['saisie','historique','config'].forEach((n,i) => {
+    if (n === name) {
+      document.getElementById('view-'+n).classList.add('active');
+      document.querySelectorAll('.nav-pill')[i].classList.add('active');
+      document.getElementById('sb-'+n)?.classList.add('active');
+    } else {
+      document.getElementById('sb-'+n)?.classList.remove('active');
+    }
+  });
+  if (name === 'historique') renderHistView();
+  if (name === 'config') renderConfigView();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── INIT ──
+let currentResult = null;
+let editRooms = [];
+
+window.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('sel-mois').value = MOIS[now.getMonth()];
+  document.getElementById('sel-annee').value = now.getFullYear();
+  buildElecFields();
+  fillPreviousValues();
+  updateHistBadge();
+  renderSbHist();
+});
+
+// ── ELEC FIELDS ──
+function buildElecFields() {
+  const rooms = getRooms().filter(r => r.hasElec);
+  const c = document.getElementById('elec-fields');
+  if (!rooms.length) {
+    c.innerHTML = '<p style="font-size:13px;color:var(--text-light);">Aucune chambre avec compteur électrique.</p>';
+    return;
+  }
+  c.innerHTML = rooms.map(r => `
+    <div class="elec-room-group">
+      <div class="elec-room-label">
+        ${r.nom}
+        <span class="pill pill-o" style="font-size:10px;">électricité + eau</span>
+      </div>
+      <div class="fg c2" style="margin-bottom:0;">
+        <div class="field">
+          <label>Relevé précédent</label>
+          <input type="number" id="prec-${r.id}" step="0.01" placeholder="0.00">
+          <div class="prev-hint" id="hint-prec-${r.id}"></div>
+        </div>
+        <div class="field">
+          <label>Relevé actuel</label>
+          <input type="number" id="act-${r.id}" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function onPeriodChange() {
+  // Clear hints & auto-filled values before refilling
+  getRooms().filter(r=>r.hasElec).forEach(r => {
+    const prec = document.getElementById(`prec-${r.id}`);
+    const hint = document.getElementById(`hint-prec-${r.id}`);
+    if (prec) prec.value = '';
+    if (hint) hint.classList.remove('show');
+  });
+  const eau = document.getElementById('eau-prec');
+  const hintEau = document.getElementById('hint-eau');
+  if (eau) eau.value = '';
+  if (hintEau) hintEau.classList.remove('show');
+  fillPreviousValues();
+}
+
+function fillPreviousValues() {
+  const mois = document.getElementById('sel-mois').value;
+  const annee = parseInt(document.getElementById('sel-annee').value);
+  const history = getHistory();
+
+  // Chercher le relevé précédent (le plus récent avant ce mois)
+  let prevEntry = null;
+  for (let i = 1; i <= 36; i++) {
+    let pm = MOIS.indexOf(mois) - i;
+    let pa = annee;
+    while (pm < 0) { pm += 12; pa--; }
+    const found = history.find(e => e.mois === MOIS[pm] && parseInt(e.annee) === pa);
+    if (found) { prevEntry = found; break; }
+  }
+  if (!prevEntry) return;
+
+  const rooms = getRooms().filter(r => r.hasElec);
+  rooms.forEach(r => {
+    const prevRes = prevEntry.results.find(pr => pr.id === r.id);
+    if (!prevRes || !prevRes.act) return;
+    const precInput = document.getElementById(`prec-${r.id}`);
+    const hint = document.getElementById(`hint-prec-${r.id}`);
+    if (precInput && !precInput.value) {
+      precInput.value = prevRes.act;
+      if (hint) { hint.textContent = `↳ depuis ${prevEntry.mois} ${prevEntry.annee}`; hint.classList.add('show'); }
+    }
+  });
+
+  const eauInput = document.getElementById('eau-prec');
+  const eauHint = document.getElementById('hint-eau');
+  if (eauInput && !eauInput.value && prevEntry.eauAct) {
+    eauInput.value = prevEntry.eauAct;
+    if (eauHint) { eauHint.textContent = `↳ depuis ${prevEntry.mois} ${prevEntry.annee}`; eauHint.classList.add('show'); }
+  }
+}
+
+// ── CALCUL ──
+function showAlert(msg) {
+  const el = document.getElementById('alert-msg');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function calculer() {
+  const rooms = getRooms();
+  const mois = document.getElementById('sel-mois').value;
+  const annee = document.getElementById('sel-annee').value;
+  const eauPrec = parseFloat(document.getElementById('eau-prec').value);
+  const eauAct = parseFloat(document.getElementById('eau-act').value);
+  const facture = parseFloat(document.getElementById('facture').value);
+
+  if ([eauPrec, eauAct, facture].some(isNaN)) { showAlert('Complétez les champs eau et montant de la facture.'); return; }
+  if (facture <= 0) { showAlert('Le montant facture doit être > 0.'); return; }
+
+  const elecRooms = rooms.filter(r => r.hasElec);
+  const elecData = {};
+  for (const r of elecRooms) {
+    const prec = parseFloat(document.getElementById(`prec-${r.id}`)?.value);
+    const act = parseFloat(document.getElementById(`act-${r.id}`)?.value);
+    if (isNaN(prec) || isNaN(act)) { showAlert(`Relevés incomplets pour ${r.nom}.`); return; }
+    if (act < prec) { showAlert(`Le relevé actuel de ${r.nom} est inférieur au précédent.`); return; }
+    elecData[r.id] = { prec, act, conso: act - prec };
+  }
+
+  const consEau = eauAct - eauPrec;
+  const partEau = consEau / rooms.length;
+  let somme = 0;
+
+  const details = rooms.map(r => {
+    const cElec = r.hasElec ? elecData[r.id].conso : 0;
+    const total = cElec + partEau;
+    somme += total;
+    return { ...r, cElec, partEau, total, prec: r.hasElec ? elecData[r.id].prec : null, act: r.hasElec ? elecData[r.id].act : null };
+  });
+
+  const PU = facture / somme;
+  const results = details.map(d => ({ ...d, montantBrut: d.total * PU, montantArrondi: Math.round(d.total * PU) }));
+  currentResult = { mois, annee, results, PU, consEau, partEau, facture, eauAct, somme };
+
+  renderResults(currentResult);
+  document.getElementById('result-zone').style.display = 'block';
+  setTimeout(() => document.getElementById('result-zone').scrollIntoView({behavior:'smooth', block:'start'}), 50);
+}
+
+function renderResults(data) {
+  document.getElementById('res-title').textContent = `${data.mois} ${data.annee}`;
+  document.getElementById('res-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Prix unitaire</div>
+      <div class="stat-val">${data.PU.toFixed(2)}</div>
+      <div class="stat-sub">FCFA / unité consommée</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Conso. eau</div>
+      <div class="stat-val">${data.consEau.toFixed(2)} m³</div>
+      <div class="stat-sub">Part / logement : ${data.partEau.toFixed(3)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Facture totale</div>
+      <div class="stat-val" style="color:var(--accent)">${fmt(data.facture)}</div>
+      <div class="stat-sub">FCFA à répartir</div>
+    </div>`;
+
+  const totalArr = data.results.reduce((s,r) => s+r.montantArrondi, 0);
+  let html = `<thead><tr>
+    <th>Chambre</th><th>Conso. élec</th><th>Part eau</th><th>Unités totales</th><th>Montant brut</th><th>À payer</th>
+  </tr></thead><tbody>`;
+  data.results.forEach(r => {
+    html += `<tr>
+      <td><strong>${r.nom}</strong> <span class="pill ${r.hasElec?'pill-o':'pill-g'}" style="font-size:10px;">${r.hasElec?'⚡+💧':'💧'}</span></td>
+      <td>${r.hasElec ? r.cElec.toFixed(2) : '<span style="color:var(--text-light)">—</span>'}</td>
+      <td>${r.partEau.toFixed(3)}</td>
+      <td>${r.total.toFixed(3)}</td>
+      <td style="color:var(--text-light)">${r.montantBrut.toFixed(0)}</td>
+      <td><span class="amount">${fmt(r.montantArrondi)}</span></td>
+    </tr>`;
+  });
+  html += `<tr class="total-row">
+    <td colspan="3"><strong>Total</strong></td>
+    <td><strong>${data.somme.toFixed(3)}</strong></td>
+    <td>${fmt(data.facture)}</td>
+    <td><span class="total-amount">${fmt(totalArr)}</span></td>
+  </tr></tbody>`;
+  document.getElementById('res-table').innerHTML = html;
+}
+
+// ── SAVE / EXPORT ──
+function sauvegarder() {
+  if (!currentResult) return;
+  saveEntry(currentResult);
+  updateHistBadge();
+  renderSbHist();
+  const btn = document.getElementById('btn-save');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Enregistré !';
+  btn.style.background = 'var(--accent)';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2200);
+}
+
+function exportExcel() {
+  if (!currentResult) return;
+  const {mois,annee,results,PU,consEau,partEau,facture} = currentResult;
+  const rows = [
+    [`RELEVÉ ${mois.toUpperCase()} ${annee}`], [],
+    ['Chambre','Type','Conso. Élec','Part Eau','Unités totales','Montant brut (FCFA)','À payer (FCFA)']
+  ];
+  results.forEach(r => rows.push([
+    r.nom, r.hasElec?'Élec + Eau':'Eau uniquement',
+    r.hasElec ? +r.cElec.toFixed(2) : '',
+    +r.partEau.toFixed(3), +r.total.toFixed(3),
+    +r.montantBrut.toFixed(2), r.montantArrondi
+  ]));
+  const tot = results.reduce((s,r)=>s+r.montantArrondi,0);
+  rows.push([],[`TOTAL`,'','','',+currentResult.somme.toFixed(3),+facture,tot],[]);
+  rows.push(['Paramètres'],['Prix unitaire (PU)',+PU.toFixed(4)],['Conso. eau totale',+consEau.toFixed(2)],
+    ['Part eau/logement',+partEau.toFixed(4)],['Montant facture',facture],['Nb logements',results.length]);
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:20},{wch:16},{wch:14},{wch:12},{wch:16},{wch:20},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `${mois} ${annee}`);
+  XLSX.writeFile(wb, `GestiCharges_${mois}_${annee}.xlsx`);
+}
+
+// ── HISTORY UI ──
+function updateHistBadge() {
+  document.getElementById('hist-count').textContent = getHistory().length;
+}
+
+function renderSbHist() {
+  const h = getHistory().slice(0,5);
+  const c = document.getElementById('sb-hist-list');
+  if (!h.length) { c.innerHTML = '<div style="font-size:12px;color:var(--text-light);padding:5px 10px;">Aucun relevé enregistré</div>'; return; }
+  c.innerHTML = h.map(e => {
+    const tot = e.results.reduce((s,r)=>s+r.montantArrondi,0);
+    return `<div class="hist-item" onclick="loadHistEntry('${e.mois}','${e.annee}')">
+      <div><div class="hist-item-label">${e.mois} ${e.annee}</div><div class="hist-item-sub">${fmt(tot)}</div></div>
+      <div class="hist-item-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+function renderHistView() {
+  const h = getHistory();
+  const c = document.getElementById('hist-list');
+  if (!h.length) {
+    c.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">Aucun relevé enregistré</div><p style="font-size:13px;">Calculez et sauvegardez votre premier relevé mensuel.</p></div>`;
+    return;
+  }
+  c.innerHTML = h.map(e => {
+    const tot = e.results.reduce((s,r)=>s+r.montantArrondi,0);
+    const pills = e.results.map(r=>`<div class="hist-rpill"><strong>${r.nom}</strong> ${fmt(r.montantArrondi)}</div>`).join('');
+    return `<div class="hist-card">
+      <div class="hist-card-head">
+        <div>
+          <span class="hist-month" onclick="loadHistEntry('${e.mois}','${e.annee}')" style="cursor:pointer;">${e.mois} ${e.annee}</span>
+          <button class="delete-btn" onclick="event.stopPropagation(); if(confirm('Supprimer ce relevé ?')) deleteEntry('${e.mois}','${e.annee}')">✕ Supprimer</button>
+        </div>
+        <div class="hist-total">${fmt(tot)}</div>
+      </div>
+      <div class="hist-pills">${pills}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadHistEntry(mois, annee) {
+  const e = getHistory().find(h => h.mois===mois && String(h.annee)===String(annee));
+  if (!e) return;
+  currentResult = e;
+  showView('saisie');
+  document.getElementById('result-zone').style.display = 'block';
+  renderResults(e);
+  document.getElementById('result-zone').scrollIntoView({behavior:'smooth'});
+}
+
+// ── CONFIG CHAMBRES ──
+function renderConfigView() {
+  editRooms = JSON.parse(JSON.stringify(getRooms()));
+  renderConfigList();
+}
+
+function renderConfigList() {
+  document.getElementById('config-list').innerHTML = editRooms.map((r,i) => `
+    <div class="room-block">
+      <div class="room-bh">
+        <div class="room-name">
+          Chambre ${i+1}
+          <span class="pill ${r.hasElec?'pill-o':'pill-g'}">${r.hasElec?'⚡ Élec + Eau':'💧 Eau seulement'}</span>
+        </div>
+        ${editRooms.length>1?`<button class="btn-rm" onclick="removeEditRoom(${r.id})">✕</button>`:''}
+      </div>
+      <div class="fg c2" style="margin-bottom:0;">
+        <div class="field">
+          <label>Nom / numéro</label>
+          <input type="text" value="${r.nom}" onchange="editRooms.find(x=>x.id===${r.id}).nom=this.value" placeholder="ex: CH 1">
+        </div>
+        <div class="field">
+          <label>Type de compteur</label>
+          <select onchange="editRooms.find(x=>x.id===${r.id}).hasElec=this.value==='true'; renderConfigList()">
+            <option value="true" ${r.hasElec?'selected':''}>⚡ Compteur électrique individuel</option>
+            <option value="false" ${!r.hasElec?'selected':''}>💧 Eau uniquement (pas de compteur élec)</option>
+          </select>
+        </div>
+      </div>
+      ${!r.hasElec?'<div class="water-note">Cette chambre n\'a pas de compteur électrique — seule la part eau lui sera facturée.</div>':''}
+    </div>`).join('');
+}
+
+function addEditRoom() {
+  editRooms.push({id: Date.now(), nom: `CH ${editRooms.length+1}`, hasElec: true});
+  renderConfigList();
+}
+function removeEditRoom(id) {
+  editRooms = editRooms.filter(r=>r.id!==id);
+  renderConfigList();
+}
+function saveConfig() {
+  setRooms(editRooms);
+  buildElecFields();
+  fillPreviousValues();
+  const a = document.getElementById('config-saved');
+  a.classList.add('show');
+  setTimeout(()=>a.classList.remove('show'),2500);
+}
+
+// ── HELPERS ──
+function fmt(n) { return Number(n).toLocaleString('fr-FR') + ' F'; }
+</script>
+</body>
+</html>

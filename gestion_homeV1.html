@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestiCharges — Relevés Locatifs</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --card: #1e2230;
+    --border: #2a2f42;
+    --accent: #4fd1c5;
+    --accent2: #f6ad55;
+    --accent3: #fc8181;
+    --text: #e2e8f0;
+    --muted: #718096;
+    --success: #68d391;
+    --radius: 12px;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #161920 0%, #1a1f2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .logo small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* STEPPER */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+  .step-item.active { opacity: 1; }
+  .step-item.done { opacity: 0.7; }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-head);
+    font-weight: 700;
+  }
+  .step-item.active .step-num {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0d0f14;
+  }
+  .step-item.done .step-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: #0d0f14;
+  }
+  .step-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .step-item.active .step-label { color: var(--accent); }
+  .step-sep { color: var(--border); font-size: 18px; }
+
+  /* MAIN */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  /* SECTIONS */
+  .section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .section.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-title {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .section-title span { color: var(--accent); }
+  .section-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .badge {
+    background: rgba(246,173,85,0.15);
+    color: var(--accent2);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  /* FORM ELEMENTS */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.single { grid-template-columns: 1fr; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .field label strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .field input, .field select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,209,197,0.1);
+  }
+  .field input::placeholder { color: var(--muted); }
+
+  /* CHAMBRE BLOCK */
+  .chambre-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .chambre-block:hover { border-color: rgba(79,209,197,0.3); }
+  .chambre-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .chambre-label {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tag-elec {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    background: rgba(79,209,197,0.15);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .tag-water {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    background: rgba(252,129,129,0.15);
+    color: var(--accent3);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .tag-full {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 400;
+    background: rgba(246,173,85,0.15);
+    color: var(--accent2);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .btn-remove {
+    background: rgba(252,129,129,0.1);
+    border: 1px solid rgba(252,129,129,0.3);
+    color: var(--accent3);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-remove:hover {
+    background: rgba(252,129,129,0.2);
+    border-color: var(--accent3);
+  }
+
+  /* BOUTONS */
+  .btn {
+    padding: 13px 28px;
+    border-radius: 8px;
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0d0f14;
+  }
+  .btn-primary:hover { background: #38b2ac; transform: translateY(-1px); }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success {
+    background: var(--success);
+    color: #0d0f14;
+  }
+  .btn-success:hover { background: #48bb78; transform: translateY(-1px); }
+  .btn-add {
+    background: rgba(79,209,197,0.1);
+    border: 1px dashed rgba(79,209,197,0.4);
+    color: var(--accent);
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .btn-add:hover {
+    background: rgba(79,209,197,0.15);
+    border-color: var(--accent);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  /* RÉSULTATS */
+  .result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .result-table th {
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(42,47,66,0.5);
+    vertical-align: middle;
+  }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table tr:hover td { background: rgba(79,209,197,0.03); }
+  .chambre-name {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .amount-big {
+    font-family: var(--font-head);
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--accent);
+  }
+  .amount-rounded {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--success);
+  }
+  .total-row td {
+    background: rgba(79,209,197,0.05) !important;
+    font-weight: 700;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .summary-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .summary-value {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .summary-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ALERT */
+  .alert {
+    background: rgba(252,129,129,0.1);
+    border: 1px solid rgba(252,129,129,0.3);
+    color: var(--accent3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .alert.visible { display: block; }
+
+  /* MONTH SELECTOR */
+  .month-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* TOOLTIP */
+  .help-text {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* WATER ONLY badge CH3 */
+  .water-only-note {
+    background: rgba(252,129,129,0.08);
+    border: 1px solid rgba(252,129,129,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--accent3);
+    margin-top: -4px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; flex-direction: column; gap: 16px; }
+    .stepper { justify-content: center; }
+    .step-label { display: none; }
+    main { padding: 24px 16px; }
+    .form-row { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    Gesti<span>Charges</span>
+    <small>Gestion des relevés locatifs</small>
+  </div>
+  <div class="stepper" id="stepper">
+    <div class="step-item active" data-step="1">
+      <div class="step-num">1</div>
+      <div class="step-label">Chambres</div>
+    </div>
+    <div class="step-sep">›</div>
+    <div class="step-item" data-step="2">
+      <div class="step-num">2</div>
+      <div class="step-label">Relevés</div>
+    </div>
+    <div class="step-sep">›</div>
+    <div class="step-item" data-step="3">
+      <div class="step-num">3</div>
+      <div class="step-label">Résultats</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- STEP 1: CONFIGURATION CHAMBRES -->
+  <div class="section active" id="step1">
+    <div class="section-title">Configuration <span>des chambres</span></div>
+    <div class="section-sub">
+      Définissez les chambres de la maison. Pour chaque chambre, précisez si elle a un compteur électrique individuel ou non.<br>
+      Cette configuration peut être réutilisée chaque mois.
+    </div>
+
+    <div id="chambre-list"></div>
+
+    <button class="btn-add" onclick="addChambre()">
+      + Ajouter une chambre
+    </button>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goToStep(2)">Continuer → Saisir les relevés</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: SAISIE RELEVÉS -->
+  <div class="section" id="step2">
+    <div class="section-title">Relevés <span>du mois</span></div>
+    <div class="section-sub">
+      Entrez le relevé de fin de période pour chaque compteur, puis la consommation en eau et le montant de la facture.
+    </div>
+
+    <div class="alert" id="alertMsg"></div>
+
+    <div class="card">
+      <div class="card-title">📅 Période concernée</div>
+      <div class="month-grid">
+        <div class="field">
+          <label>Mois de facturation</label>
+          <select id="sel-mois">
+            <option>Janvier</option><option>Février</option><option>Mars</option>
+            <option>Avril</option><option>Mai</option><option>Juin</option>
+            <option>Juillet</option><option>Août</option><option>Septembre</option>
+            <option>Octobre</option><option>Novembre</option><option>Décembre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Année</label>
+          <input type="number" id="sel-annee" value="2025" min="2020" max="2030">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚡ Relevés électricité <span class="badge">Compteurs individuels</span></div>
+      <div id="releve-elec-fields"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💧 Eau & Facture globale</div>
+      <div class="form-row three">
+        <div class="field">
+          <label>Relevé eau précédent</label>
+          <input type="number" id="eau-prec" placeholder="ex: 3812.5" step="0.01">
+        </div>
+        <div class="field">
+          <label>Relevé eau actuel</label>
+          <input type="number" id="eau-act" placeholder="ex: 3853.4" step="0.01">
+        </div>
+        <div class="field">
+          <label>Montant facture (FCFA)</label>
+          <input type="number" id="montant-facture" placeholder="ex: 43169" step="1">
+          <div class="help-text">Montant total incluant taxes & frais</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(1)">← Retour</button>
+      <button class="btn btn-primary" onclick="calculer()">Calculer les montants →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: RÉSULTATS -->
+  <div class="section" id="step3">
+    <div class="section-title">Résultats <span id="result-title-period"></span></div>
+    <div class="section-sub" id="result-sub"></div>
+
+    <div class="summary-grid" id="summary-grid"></div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:18px 24px 12px; border-bottom:1px solid var(--border);">
+        <div class="card-title" style="margin:0;">📊 Détail par chambre</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="result-table" id="result-table"></table>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← Modifier</button>
+      <button class="btn btn-success" onclick="exportExcel()">⬇ Exporter Excel</button>
+      <button class="btn btn-secondary" onclick="goToStep(2) || resetForm()">Nouveau mois</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ========================
+// STATE
+// ========================
+let chambres = [];
+let chambreIdCounter = 1;
+let resultData = null;
+
+// ========================
+// INIT: pré-charger la config de votre maison
+// ========================
+window.addEventListener('DOMContentLoaded', () => {
+  const defaultConfig = [
+    { id: 1, nom: 'CH 1', hasElec: true },
+    { id: 2, nom: 'CH 2', hasElec: true },
+    { id: 3, nom: 'CH 3', hasElec: false },
+    { id: 4, nom: 'CH 4', hasElec: true },
+    { id: 5, nom: 'CH 5', hasElec: true },
+    { id: 6, nom: 'CH 6', hasElec: true },
+    { id: 7, nom: 'CH 7', hasElec: true },
+  ];
+  defaultConfig.forEach(c => {
+    chambreIdCounter = c.id + 1;
+    chambres.push(c);
+  });
+  renderChambreList();
+
+  const now = new Date();
+  const moisFr = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('sel-mois').value = moisFr[now.getMonth()];
+  document.getElementById('sel-annee').value = now.getFullYear();
+});
+
+// ========================
+// GESTION DES CHAMBRES
+// ========================
+function addChambre() {
+  chambres.push({ id: chambreIdCounter++, nom: `CH ${chambreIdCounter - 1}`, hasElec: true });
+  renderChambreList();
+}
+
+function removeChambre(id) {
+  if (chambres.length <= 1) return;
+  chambres = chambres.filter(c => c.id !== id);
+  renderChambreList();
+}
+
+function updateChambre(id, field, value) {
+  const c = chambres.find(c => c.id === id);
+  if (c) c[field] = field === 'hasElec' ? value === 'true' : value;
+}
+
+function renderChambreList() {
+  const container = document.getElementById('chambre-list');
+  container.innerHTML = '';
+  chambres.forEach((c, i) => {
+    const hasElec = c.hasElec;
+    const tag = hasElec
+      ? '<span class="tag-full">⚡ Élec + 💧 Eau</span>'
+      : '<span class="tag-water">💧 Eau uniquement</span>';
+
+    container.innerHTML += `
+      <div class="chambre-block">
+        <div class="chambre-header">
+          <div class="chambre-label">
+            Chambre ${i + 1} &nbsp; ${tag}
+          </div>
+          <button class="btn-remove" onclick="removeChambre(${c.id})">✕ Supprimer</button>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Nom / Numéro de chambre</label>
+            <input type="text" value="${c.nom}"
+              onchange="updateChambre(${c.id}, 'nom', this.value)"
+              placeholder="ex: CH 1, Studio A...">
+          </div>
+          <div class="field">
+            <label>Type de compteur</label>
+            <select onchange="updateChambre(${c.id}, 'hasElec', this.value); renderChambreList()">
+              <option value="true" ${hasElec ? 'selected' : ''}>⚡ Compteur électrique individuel</option>
+              <option value="false" ${!hasElec ? 'selected' : ''}>💧 Eau uniquement (pas de compteur élec)</option>
+            </select>
+          </div>
+        </div>
+        ${!hasElec ? '<div class="water-only-note">ℹ️ Cette chambre n\'a pas de compteur électrique personnel — seule la part eau lui sera facturée.</div>' : ''}
+      </div>
+    `;
+  });
+}
+
+// ========================
+// STEP 2: GÉNÉRER LES CHAMPS
+// ========================
+function buildReleveFields() {
+  const container = document.getElementById('releve-elec-fields');
+  container.innerHTML = '';
+  const elecRooms = chambres.filter(c => c.hasElec);
+
+  elecRooms.forEach(c => {
+    container.innerHTML += `
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="field">
+          <label><strong>${c.nom}</strong> — Relevé précédent</label>
+          <input type="number" id="prec-${c.id}" placeholder="ex: 945.0" step="0.01">
+        </div>
+        <div class="field">
+          <label><strong>${c.nom}</strong> — Relevé actuel</label>
+          <input type="number" id="act-${c.id}" placeholder="ex: 965.1" step="0.01">
+        </div>
+      </div>
+    `;
+  });
+}
+
+// ========================
+// NAVIGATION
+// ========================
+function goToStep(n) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step${n}`).classList.add('active');
+  document.querySelectorAll('.step-item').forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('active', 'done');
+    if (sn === n) s.classList.add('active');
+    else if (sn < n) s.classList.add('done');
+  });
+
+  if (n === 2) buildReleveFields();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showAlert(msg) {
+  const el = document.getElementById('alertMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 4000);
+}
+
+// ========================
+// CALCUL PRINCIPAL
+// ========================
+function calculer() {
+  // Collecte
+  const mois = document.getElementById('sel-mois').value;
+  const annee = document.getElementById('sel-annee').value;
+  const eauPrec = parseFloat(document.getElementById('eau-prec').value);
+  const eauAct = parseFloat(document.getElementById('eau-act').value);
+  const montantFacture = parseFloat(document.getElementById('montant-facture').value);
+
+  if (isNaN(eauPrec) || isNaN(eauAct) || isNaN(montantFacture)) {
+    showAlert('Veuillez remplir tous les champs : relevés eau et montant facture.');
+    return;
+  }
+  if (montantFacture <= 0) {
+    showAlert('Le montant de la facture doit être supérieur à 0.');
+    return;
+  }
+
+  // Relevés électricité
+  const elecRooms = chambres.filter(c => c.hasElec);
+  const elecData = {};
+  for (const c of elecRooms) {
+    const prec = parseFloat(document.getElementById(`prec-${c.id}`).value);
+    const act = parseFloat(document.getElementById(`act-${c.id}`).value);
+    if (isNaN(prec) || isNaN(act)) {
+      showAlert(`Veuillez renseigner les deux relevés pour ${c.nom}.`);
+      return;
+    }
+    if (act < prec) {
+      showAlert(`Le relevé actuel de ${c.nom} est inférieur au relevé précédent.`);
+      return;
+    }
+    elecData[c.id] = { prec, act, conso: act - prec };
+  }
+
+  // Calculs
+  const consommationEau = eauAct - eauPrec;
+  const nbLocataires = chambres.length;
+  const partEauParLocataire = consommationEau / nbLocataires;
+
+  // Somme totale (elec + part eau par chambre)
+  let sommeTotal = 0;
+  const chambreDetails = chambres.map(c => {
+    const cElec = c.hasElec ? elecData[c.id].conso : 0;
+    const consoAvecEau = cElec + partEauParLocataire;
+    sommeTotal += consoAvecEau;
+    return { ...c, consoElec: cElec, partEau: partEauParLocataire, consoAvecEau };
+  });
+
+  // Prix unitaire
+  const PU = montantFacture / sommeTotal;
+
+  // Montants
+  const results = chambreDetails.map(c => {
+    const montantBrut = c.consoAvecEau * PU;
+    const montantArrondi = Math.round(montantBrut);
+    return { ...c, montantBrut, montantArrondi };
+  });
+
+  const totalArrondi = results.reduce((s, r) => s + r.montantArrondi, 0);
+
+  resultData = { mois, annee, results, PU, consommationEau, partEauParLocataire, montantFacture, totalArrondi, sommeTotal };
+  renderResults(resultData);
+  goToStep(3);
+}
+
+// ========================
+// AFFICHAGE RÉSULTATS
+// ========================
+function renderResults(data) {
+  document.getElementById('result-title-period').textContent = `— ${data.mois} ${data.annee}`;
+  document.getElementById('result-sub').textContent =
+    `Facture de ${fmt(data.montantFacture)} FCFA répartie entre ${data.results.length} chambres.`;
+
+  // Summary cards
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="summary-card">
+      <div class="summary-label">Prix Unitaire (PU)</div>
+      <div class="summary-value">${data.PU.toFixed(2)}</div>
+      <div class="summary-sub">FCFA par unité de consommation</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Consommation Eau</div>
+      <div class="summary-value">${data.consommationEau.toFixed(2)} m³</div>
+      <div class="summary-sub">Part eau / locataire : ${data.partEauParLocataire.toFixed(3)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Total facturé</div>
+      <div class="summary-value">${fmt(data.totalArrondi)}</div>
+      <div class="summary-sub">FCFA (montant réel : ${fmt(data.montantFacture)})</div>
+    </div>
+  `;
+
+  // Tableau
+  const elecRooms = data.results.filter(r => r.hasElec);
+  const waterOnly = data.results.filter(r => !r.hasElec);
+
+  let html = `
+    <thead>
+      <tr>
+        <th>Chambre</th>
+        <th>Conso. Élec</th>
+        <th>Part Eau</th>
+        <th>Conso. Totale</th>
+        <th>Montant brut</th>
+        <th>Montant à payer</th>
+      </tr>
+    </thead>
+    <tbody>
+  `;
+
+  data.results.forEach(r => {
+    const typeTag = r.hasElec
+      ? `<span class="tag-elec" style="font-size:9px;">⚡+💧</span>`
+      : `<span class="tag-water" style="font-size:9px;">💧 eau</span>`;
+    html += `
+      <tr>
+        <td><span class="chambre-name">${r.nom}</span> ${typeTag}</td>
+        <td>${r.hasElec ? r.consoElec.toFixed(2) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${r.partEau.toFixed(3)}</td>
+        <td>${r.consoAvecEau.toFixed(3)}</td>
+        <td style="color:var(--muted)">${fmt2(r.montantBrut)}</td>
+        <td><span class="amount-rounded">${fmt(r.montantArrondi)}</span></td>
+      </tr>
+    `;
+  });
+
+  html += `
+    <tr class="total-row">
+      <td colspan="3"><strong>TOTAL</strong></td>
+      <td><strong>${data.sommeTotal.toFixed(3)}</strong></td>
+      <td style="color:var(--muted)"><strong>${fmt(data.montantFacture)}</strong></td>
+      <td><span class="amount-big">${fmt(data.totalArrondi)}</span></td>
+    </tr>
+  `;
+  html += '</tbody>';
+  document.getElementById('result-table').innerHTML = html;
+}
+
+// ========================
+// EXPORT EXCEL
+// ========================
+function exportExcel() {
+  if (!resultData) return;
+  const { mois, annee, results, PU, consommationEau, partEauParLocataire, montantFacture, totalArrondi } = resultData;
+
+  const wb = XLSX.utils.book_new();
+  const rows = [];
+
+  // Entête
+  rows.push([`RELEVÉ ${mois.toUpperCase()} ${annee}`, '', '', '', '', '']);
+  rows.push(['']);
+  rows.push(['Chambre', 'Conso. Électricité', 'Part Eau', 'Conso. Totale (élec+eau)', 'Montant Brut (FCFA)', 'Montant à Payer (FCFA)']);
+
+  results.forEach(r => {
+    rows.push([
+      r.nom + (r.hasElec ? '' : ' (eau seulement)'),
+      r.hasElec ? +r.consoElec.toFixed(2) : '',
+      +r.partEau.toFixed(3),
+      +r.consoAvecEau.toFixed(3),
+      +r.montantBrut.toFixed(2),
+      r.montantArrondi
+    ]);
+  });
+
+  rows.push(['']);
+  rows.push(['TOTAL', '', '', +resultData.sommeTotal.toFixed(3), +montantFacture, totalArrondi]);
+  rows.push(['']);
+  rows.push(['Paramètres', '']);
+  rows.push(['Prix Unitaire (PU)', +PU.toFixed(4)]);
+  rows.push(['Consommation Eau totale', +consommationEau.toFixed(2)]);
+  rows.push(['Part eau / locataire', +partEauParLocataire.toFixed(4)]);
+  rows.push(['Montant facture', montantFacture]);
+  rows.push(['Nb de locataires', results.length]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Largeurs colonnes
+  ws['!cols'] = [
+    { wch: 24 }, { wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 20 }, { wch: 22 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, `${mois} ${annee}`);
+  XLSX.writeFile(wb, `GestiCharges_${mois}_${annee}.xlsx`);
+}
+
+// ========================
+// HELPERS
+// ========================
+function fmt(n) {
+  return Number(n).toLocaleString('fr-FR') + ' FCFA';
+}
+function fmt2(n) {
+  return Number(n).toFixed(2).replace('.', ',') + ' FCFA';
+}
+
+function resetForm() {
+  document.getElementById('eau-prec').value = '';
+  document.getElementById('eau-act').value = '';
+  document.getElementById('montant-facture').value = '';
+}
+</script>
+</body>
+</html>
